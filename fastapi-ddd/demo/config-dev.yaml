@@ -1,0 +1,16 @@
+app:
+  name: demo
+  debug: false
+
+db:
+  driver: mysql+asyncmy
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: root
+  database: test
+
+  pool_size: 10
+  max_overflow: 20
+  pool_recycle: 3600
+  echo: false
