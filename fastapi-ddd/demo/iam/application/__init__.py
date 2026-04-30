@@ -5,5 +5,13 @@ from demo.iam.application.exception_handler import (
 )
 
 
-from demo.iam.application.iam_service import IamService, Token
 from demo.iam.application.jwt_encoder import UserContext
+
+
+from demo.iam.application.iam_service import (
+    IamService,
+    PermissionBaseInfoDTO,
+    RoleInfoDTO,
+    Token,
+    UserInfoDTO,
+)

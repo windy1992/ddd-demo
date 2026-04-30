@@ -33,22 +33,22 @@ class Token(BaseModel):
     token_type: str
 
 
-class UserInfo(BaseModel):
+class UserInfoDTO(BaseModel):
     user_id: str
     user_name: str
-    roles: list["RoleBaseInfo"]
+    roles: list["RoleBaseInfoDTO"]
 
 
-class RoleBaseInfo(BaseModel):
+class RoleBaseInfoDTO(BaseModel):
     role_id: str
     role_name: str
 
 
-class RoleInfo(RoleBaseInfo):
-    permissions: list["PermissionBaseInfo"]
+class RoleInfoDTO(RoleBaseInfoDTO):
+    permissions: list["PermissionBaseInfoDTO"]
 
 
-class PermissionBaseInfo(BaseModel):
+class PermissionBaseInfoDTO(BaseModel):
     permission_id: str
     code: str
 
@@ -136,17 +136,17 @@ class IamService:
                 role_permission.revoke()
                 await self.role_permission_repo.save(role_permission)
 
-    async def list_user(self) -> list[UserInfo]:
+    async def list_user(self) -> list[UserInfoDTO]:
         users = await self.user_repo.list_user_info()
-        return [UserInfo(**user.model_dump()) for user in users]
+        return [UserInfoDTO(**user.model_dump()) for user in users]
 
-    async def list_role(self) -> list[RoleInfo]:
+    async def list_role(self) -> list[RoleInfoDTO]:
         roles = await self.role_repo.list_role_info()
-        return [RoleInfo(**role.model_dump()) for role in roles]
+        return [RoleInfoDTO(**role.model_dump()) for role in roles]
 
-    async def list_permission(self) -> list[PermissionBaseInfo]:
+    async def list_permission(self) -> list[PermissionBaseInfoDTO]:
         permissions = await self.permission_repo.list_all()
         return [
-            PermissionBaseInfo(permission_id=permission.u_id, code=permission.code)
+            PermissionBaseInfoDTO(permission_id=permission.u_id, code=permission.code)
             for permission in permissions
         ]

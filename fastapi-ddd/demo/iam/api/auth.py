@@ -3,10 +3,15 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from demo.iam.api.middleware import require_any
-from demo.iam.application.iam_service import IamService, Token
+from demo.iam.application import (
+    IamService,
+    PermissionBaseInfoDTO,
+    RoleInfoDTO,
+    Token,
+    UserInfoDTO,
+)
 from demo.core.db import get_async_conn
 from demo.iam.application.jwt_encoder import UserContext
-
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,7 +39,7 @@ async def register_user(req: UserInfo, conn: AsyncConnection = Depends(get_async
     return await iam_service.register_user(req.username, req.password)
 
 
-@router.get("/users")
+@router.get("/users", response_model=list[UserInfoDTO])
 async def list_user(
     conn: AsyncConnection = Depends(get_async_conn),
     user: UserContext = Depends(require_any(roles=["admin"])),
@@ -55,7 +60,7 @@ async def new_role(
     return await iam_service.new_role(role_name)
 
 
-@router.get("/roles")
+@router.get("/roles", response_model=list[RoleInfoDTO])
 async def list_role(
     conn: AsyncConnection = Depends(get_async_conn),
     user: UserContext = Depends(require_any(roles=["admin"])),
@@ -76,7 +81,7 @@ async def new_permission(
     return await iam_service.new_permission(code)
 
 
-@router.get("/permissions")
+@router.get("/permissions", response_model=list[PermissionBaseInfoDTO])
 async def list_permission(
     conn: AsyncConnection = Depends(get_async_conn),
     user: UserContext = Depends(require_any(roles=["admin"])),
@@ -123,7 +128,7 @@ async def assign_permission_to_role(
 
 
 @router.delete("/roles/{role_id}/permissions")
-async def revoke_permission_from_role(
+async def revoke_permissions_from_role(
     role_id: str = Path(...),
     permission_ids: list[str] = Body(..., embed=True),
     conn: AsyncConnection = Depends(get_async_conn),
