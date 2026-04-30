@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, Depends, Form, Path
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from demo.core.event_store import get_async_conn_and_sub_event
 from demo.iam.api.middleware import require_any
 from demo.iam.application import (
     IamService,
@@ -10,7 +11,6 @@ from demo.iam.application import (
     Token,
     UserInfoDTO,
 )
-from demo.core.db import get_async_conn
 from demo.iam.application.jwt_encoder import UserContext
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,7 +25,7 @@ class UserInfo(BaseModel):
 async def login(
     username=Form(...),
     password=Form(...),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
 ) -> Token:
     iam_service = IamService(conn)
 
@@ -33,7 +33,9 @@ async def login(
 
 
 @router.post("/user")
-async def register_user(req: UserInfo, conn: AsyncConnection = Depends(get_async_conn)):
+async def register_user(
+    req: UserInfo, conn: AsyncConnection = Depends(get_async_conn_and_sub_event)
+):
     iam_service = IamService(conn)
 
     return await iam_service.register_user(req.username, req.password)
@@ -41,7 +43,7 @@ async def register_user(req: UserInfo, conn: AsyncConnection = Depends(get_async
 
 @router.get("/users", response_model=list[UserInfoDTO])
 async def list_user(
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -52,7 +54,7 @@ async def list_user(
 @router.post("/role")
 async def new_role(
     role_name: str = Body(..., embed=True),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -62,7 +64,7 @@ async def new_role(
 
 @router.get("/roles", response_model=list[RoleInfoDTO])
 async def list_role(
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -73,7 +75,7 @@ async def list_role(
 @router.post("/permission")
 async def new_permission(
     code: str = Body(..., embed=True),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -83,7 +85,7 @@ async def new_permission(
 
 @router.get("/permissions", response_model=list[PermissionBaseInfoDTO])
 async def list_permission(
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -95,7 +97,7 @@ async def list_permission(
 async def assign_roles_to_user(
     user_name: str = Path(...),
     role_ids: list[str] = Body(..., embed=True),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -107,7 +109,7 @@ async def assign_roles_to_user(
 async def revoke_roles_from_user(
     user_id: str = Path(...),
     role_ids: list[str] = Body(..., embed=True),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -119,7 +121,7 @@ async def revoke_roles_from_user(
 async def assign_permission_to_role(
     role_id: str = Path(...),
     permission_ids: list[str] = Body(..., embed=True),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)
@@ -131,7 +133,7 @@ async def assign_permission_to_role(
 async def revoke_permissions_from_role(
     role_id: str = Path(...),
     permission_ids: list[str] = Body(..., embed=True),
-    conn: AsyncConnection = Depends(get_async_conn),
+    conn: AsyncConnection = Depends(get_async_conn_and_sub_event),
     user: UserContext = Depends(require_any(roles=["admin"])),
 ):
     iam_service = IamService(conn)

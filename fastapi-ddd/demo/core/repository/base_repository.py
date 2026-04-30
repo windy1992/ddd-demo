@@ -1,7 +1,6 @@
 from typing import Generic, Protocol, TypeVar
 
-from demo.core.entity import BaseEntity
-
+from demo.core.entity.entity import BaseEntity
 
 T = TypeVar("T", bound=BaseEntity)
 

@@ -30,6 +30,10 @@ class TokenConfig(BaseModel):
     expire_hours: int = 24
 
 
+class LogConfig(BaseModel):
+    level: str = "INFO"
+
+
 class AppConfig(BaseModel):
     name: str
     debug: bool
@@ -39,3 +43,4 @@ class Config(BaseModel):
     app: AppConfig
     db: DBConfig
     token: TokenConfig = Field(default_factory=TokenConfig)
+    log: LogConfig = Field(default_factory=LogConfig)

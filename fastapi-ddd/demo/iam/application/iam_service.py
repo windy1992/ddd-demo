@@ -86,6 +86,7 @@ class IamService:
                 permission_codes=granted_permissions.permission_codes,
             )
         )
+
         return Token(access_token=access_token, token_type="bearer")
 
     async def register_user(self, username: str, password: str):

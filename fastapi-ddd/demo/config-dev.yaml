@@ -2,6 +2,9 @@ app:
   name: demo
   debug: false
 
+log:
+  level: DEBUG
+
 db:
   driver: mysql+asyncmy
   host: 127.0.0.1

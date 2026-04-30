@@ -6,8 +6,7 @@ from sqlalchemy import BigInteger, Boolean, Column, DateTime, MetaData, Table
 from sqlalchemy import select, exists, update, func, false
 
 
-from demo.core.entity import BaseEntity
-
+from demo.core.entity.entity import BaseEntity
 
 metadata = MetaData()
 _slots = [

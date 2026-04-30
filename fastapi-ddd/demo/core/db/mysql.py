@@ -2,7 +2,6 @@
 from typing import AsyncIterator, Optional
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncConnection
 
-
 Engine: Optional[AsyncEngine] = None
 
 

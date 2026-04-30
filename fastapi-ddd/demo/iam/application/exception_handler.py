@@ -1,4 +1,4 @@
-from demo.core.exception_handler_factory import http_exception_handler_factory
+from demo.core.error.exception_handler_factory import http_exception_handler_factory
 from demo.iam.domain.error import AccessDeniedException, AuthenticationException
 
 

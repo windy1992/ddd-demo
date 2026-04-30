@@ -8,7 +8,7 @@ from demo.iam.domain.entity import (
     UserInfo,
     UserRole,
 )
-from demo.core.base_repository import BaseRepository
+from demo.core.repository.base_repository import BaseRepository
 
 
 class UserRepository(BaseRepository[User]):

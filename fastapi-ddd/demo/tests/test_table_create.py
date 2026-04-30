@@ -1,6 +1,6 @@
 from demo.core.db.mysql import get_async_engine
-import demo.iam.infrastructure.repository
-from demo.core.repository import metadata
+
+from demo.core.repository.repository import metadata
 import pytest
 
 

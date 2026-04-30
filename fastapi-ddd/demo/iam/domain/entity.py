@@ -1,7 +1,7 @@
 # coding: utf-8
 from pydantic import BaseModel
 
-from demo.core.entity import BaseEntity
+from demo.core.entity.entity import BaseEntity
 
 
 class User(BaseEntity):
