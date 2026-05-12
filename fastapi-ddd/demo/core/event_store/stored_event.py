@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 
 from demo.core.event_store.domain_event import DomainEvent, DomainEventSubscriber
-from demo.core.repository impor
+from demo.core.repository.repository import metadata
 
 
 class StoredEvent(BaseModel):

@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -39,8 +41,18 @@ class AppConfig(BaseModel):
     debug: bool
 
 
+class TelemetryConfig(BaseModel):
+    """OpenTelemetry：OTLP/HTTP 导出，默认关闭。"""
+
+    enabled: bool = False
+    otlp_endpoint: str = "http://127.0.0.1:4318"
+    export_interval_seconds: int = 60
+    service_name: Optional[str] = None
+
+
 class Config(BaseModel):
     app: AppConfig
     db: DBConfig
     token: TokenConfig = Field(default_factory=TokenConfig)
     log: LogConfig = Field(default_factory=LogConfig)
+    telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)

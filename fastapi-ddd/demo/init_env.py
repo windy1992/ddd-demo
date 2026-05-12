@@ -5,7 +5,6 @@ import demo.core.config as cf
 from demo.core.config.config import DBConfig
 import demo.core.db as db
 
-
 def init_env():
     cf.set_up()
 

@@ -1,9 +1,12 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import uvicorn
 
 from demo.core.error.error import ValueErrorException
 from demo.core.error.exception_handler_factory import http_exception_handler_factory
+from demo.core.observability import instrument_app, uninstrument_app
 import demo.iam.api as iam
 from demo.init_env import init_env
 
@@ -18,21 +21,28 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-def include_router():
+def include_router(app: FastAPI):
     iam.router_register_to(app)
 
 
-def add_exception_handler():
+def add_exception_handler(app: FastAPI):
+    app.add_exception_handler(Exception, global_exception_handler)
+    app.add_exception_handler(ValueErrorException, http_exception_handler_factory(400))
     iam.exception_handler_register_to(app)
 
 
-init_env()  # 初始化环境
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_env()
+    instrument_app(app)
+    try:
+        yield
+    finally:
+        uninstrument_app(app)
 
-app = FastAPI()
-app.add_exception_handler(Exception, global_exception_handler)
-app.add_exception_handler(ValueErrorException, http_exception_handler_factory(400))
-include_router()
-add_exception_handler()
+app = FastAPI(lifespan=lifespan)
+include_router(app)
+add_exception_handler(app)
 
 
 if __name__ == "__main__":
