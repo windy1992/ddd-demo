@@ -103,7 +103,7 @@ class IamService:
             raise RoleExistException() from exc
 
     async def new_permission(self, code: str):
-        permission = Permission(self.role_repo.next_id(), code)
+        permission = Permission(self.permission_repo.next_id(), code)
         try:
             await self.permission_repo.save(permission)
         except sqlalchemy.exc.IntegrityError as exc:
