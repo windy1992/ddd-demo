@@ -49,7 +49,7 @@ export async function apiFetch<T>(
     if (t) headers.set("Authorization", `Bearer ${t}`)
   }
 
-  const res = await fetch(url, { ...rest, headers })
+  const res = await fetch(url, { ...rest, headers, cache: "no-store" })
 
   if (res.status === 401) {
     clearToken()

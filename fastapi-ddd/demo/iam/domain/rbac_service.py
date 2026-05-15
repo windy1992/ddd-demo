@@ -28,8 +28,8 @@ class RbacService:
         self.user_role_repo = user_role_repo
         self.role_permission_repo = role_permission_repo
 
-    async def assign_roles_to_user(self, user_name: str, role_ids: list[str]):
-        user = await self.user_repo.find_by_name(user_name)
+    async def assign_roles_to_user(self, user_id: str, role_ids: list[str]):
+        user = await self.user_repo.find_by_id(user_id)
         if not user:
             raise UserNotExistException()
         for role_id in role_ids:

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PaginationBar } from "@/components/ui/pagination-bar"
 import {
   Table,
   TableBody,
@@ -25,41 +26,58 @@ import type { PermissionBase, RoleInfo } from "@/lib/iam-types"
 import {
   assignPermissionsToRole,
   createRole,
+  deleteRole,
   listPermissions,
-  listRoles,
+  listRolesPaged,
   revokePermissionsFromRole,
 } from "@/lib/iam-api"
+
+const DEFAULT_PAGE_SIZE = 10
 
 export function RolesPage() {
   const [roles, setRoles] = useState<RoleInfo[]>([])
   const [perms, setPerms] = useState<PermissionBase[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [total, setTotal] = useState(0)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [newName, setNewName] = useState("")
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [revokeOpen, setRevokeOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [activeRole, setActiveRole] = useState<RoleInfo | null>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [assignPermBaseline, setAssignPermBaseline] = useState<Set<string>>(new Set())
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (p = page, ps = pageSize) => {
     setLoading(true)
     try {
-      const [r, p] = await Promise.all([listRoles(), listPermissions()])
-      setRoles(r)
-      setPerms(p)
+      const [paged, permsData] = await Promise.all([listRolesPaged(p, ps), listPermissions()])
+      setRoles(paged.items)
+      setTotal(paged.total)
+      setPerms(permsData)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "加载失败")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, pageSize])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  function handlePageChange(p: number) {
+    setPage(p)
+  }
+
+  function handlePageSizeChange(ps: number) {
+    setPageSize(ps)
+    setPage(1)
+  }
 
   function openAssign(role: RoleInfo) {
     setActiveRole(role)
@@ -73,6 +91,27 @@ export function RolesPage() {
     setActiveRole(role)
     setPicked(new Set())
     setRevokeOpen(true)
+  }
+
+  function openDelete(role: RoleInfo) {
+    setActiveRole(role)
+    setDeleteOpen(true)
+  }
+
+  async function submitDelete() {
+    if (!activeRole) return
+    try {
+      await deleteRole(activeRole.role_id)
+      toast.success("角色已删除")
+      setDeleteOpen(false)
+      const newTotal = total - 1
+      const maxPage = Math.max(1, Math.ceil(newTotal / pageSize))
+      const targetPage = page > maxPage ? maxPage : page
+      setPage(targetPage)
+      await load(targetPage, pageSize)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "删除失败")
+    }
   }
 
   function toggle(id: string, checked: boolean) {
@@ -92,9 +131,9 @@ export function RolesPage() {
     try {
       await createRole(newName.trim())
       toast.success("角色已创建")
-      setCreateOpen(false)
       setNewName("")
-      await load()
+      setCreateOpen(false)
+      await load(page, pageSize)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "创建失败")
     }
@@ -111,7 +150,7 @@ export function RolesPage() {
       await assignPermissionsToRole(activeRole.role_id, toAdd)
       toast.success("权限已分配")
       setAssignOpen(false)
-      await load()
+      await load(page, pageSize)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "分配失败")
     }
@@ -128,7 +167,7 @@ export function RolesPage() {
       await revokePermissionsFromRole(activeRole.role_id, ids)
       toast.success("已移除权限")
       setRevokeOpen(false)
-      await load()
+      await load(page, pageSize)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "移除失败")
     }
@@ -139,7 +178,7 @@ export function RolesPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold">角色管理</h1>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+          <Button type="button" variant="outline" size="sm" onClick={() => void load(page, pageSize)}>
             刷新
           </Button>
           <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
@@ -198,6 +237,9 @@ export function RolesPage() {
                       <Button type="button" variant="outline" size="sm" onClick={() => openRevoke(r)}>
                         移除权限
                       </Button>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => openDelete(r)}>
+                        删除
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -205,6 +247,13 @@ export function RolesPage() {
             )}
           </TableBody>
         </Table>
+        <PaginationBar
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -241,10 +290,11 @@ export function RolesPage() {
               return (
                 <label
                   key={p.permission_id}
-                  className="flex cursor-pointer flex-wrap items-center gap-2 rounded-md border p-2"
+                  className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${already ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
                 >
                   <Checkbox
                     checked={picked.has(p.permission_id)}
+                    disabled={already}
                     onCheckedChange={(c) => toggle(p.permission_id, c === true)}
                   />
                   <span className="text-sm">{p.code}</span>
@@ -263,6 +313,25 @@ export function RolesPage() {
             </Button>
             <Button type="button" onClick={() => void submitAssign()}>
               确认分配
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除角色</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            确定要删除角色 <span className="font-medium text-foreground">{activeRole?.role_name}</span> 吗？此操作不可撤销。
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void submitDelete()}>
+              确认删除
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -15,3 +15,4 @@ from demo.iam.application.iam_service import (
     Token,
     UserInfoDTO,
 )
+from demo.util.pagination import PaginatedDTO

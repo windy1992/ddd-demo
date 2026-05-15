@@ -50,9 +50,43 @@ class TelemetryConfig(BaseModel):
     service_name: Optional[str] = None
 
 
+class RoleDeletedMessageConfig(BaseModel):
+    """RoleDeleted 出队/订阅使用的 RabbitMQ 与事件类型。"""
+    amqp_url: str = "amqp://admin:admin1@127.0.0.1/"
+    queue_name: str = "iam.role_deleted"
+    fanout_exchange: str = "iam.role_deleted.fanout"
+    event_type: str = "RoleDeleted"
+
+
+class UserDeletedMessageConfig(BaseModel):
+    """UserDeleted 出队/订阅使用的 RabbitMQ 与事件类型。"""
+    amqp_url: str = "amqp://admin:admin1@127.0.0.1/"
+    queue_name: str = "iam.user_deleted"
+    fanout_exchange: str = "iam.user_deleted.fanout"
+    event_type: str = "UserDeleted"
+
+class MessagesConfig(BaseModel):
+    role_deleted_message: RoleDeletedMessageConfig = Field(
+        default_factory=RoleDeletedMessageConfig
+    )
+    user_deleted_message: UserDeletedMessageConfig = Field(
+        default_factory=UserDeletedMessageConfig
+    )
+
+
+class TaskletsConfig(BaseModel):
+    """常驻后台进程配置。enabled 填写各 tasklet 的 Python 模块路径，
+    每个模块须暴露 async def main() 入口。"""
+
+    enabled: list[str] = []
+    restart_delay_seconds: int = 5
+
+
 class Config(BaseModel):
     app: AppConfig
     db: DBConfig
     token: TokenConfig = Field(default_factory=TokenConfig)
     log: LogConfig = Field(default_factory=LogConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
+    messages: MessagesConfig = Field(default_factory=MessagesConfig)
+    tasklets: TaskletsConfig = Field(default_factory=TaskletsConfig)

@@ -2,6 +2,9 @@
 from pydantic import BaseModel
 
 from demo.core.entity.entity import BaseEntity
+from demo.core.event_store.domain_event import DomainEventPublisher
+from demo.iam.domain.events import RoleDeleted, UserDeleted
+from demo.util.time import utc_now
 
 
 class User(BaseEntity):
@@ -15,6 +18,12 @@ class User(BaseEntity):
 
         self.name = name
         self.password = password
+
+    async def delete(self):
+        await super().delete()
+        await DomainEventPublisher.publish(
+            UserDeleted(user_id=self.u_id, occurred_at=utc_now())
+        )
 
     def assign_role(self, user_role_id: str, role: "Role") -> "UserRole":
         return UserRole(user_role_id, self.u_id, role.u_id)
@@ -30,6 +39,12 @@ class Role(BaseEntity):
         super().__init__(u_id)
 
         self.name = name
+
+    async def delete(self):
+        await super().delete()
+        await DomainEventPublisher.publish(
+            RoleDeleted(role_id=self.u_id, occurred_at=utc_now())
+        )
 
     def assign_permission(
         self, role_permission_id, permission: "Permission"
@@ -57,8 +72,8 @@ class UserRole(BaseEntity):
         self.user_id = user_id
         self.role_id = role_id
 
-    def revoke(self):
-        self.delete()
+    async def revoke(self):
+        await self.delete()
 
 
 class RolePermission(BaseEntity):
@@ -68,8 +83,8 @@ class RolePermission(BaseEntity):
         self.role_id = role_id
         self.permission_id = permission_id
 
-    def revoke(self):
-        self.delete()
+    async def revoke(self):
+        await self.delete()
 
 
 class GrantedPermissions(BaseModel):

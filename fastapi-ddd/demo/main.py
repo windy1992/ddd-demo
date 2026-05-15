@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -22,12 +23,23 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,
+        content={
+            "code": "INVALID_PARAMS",
+            "message": "参数不合法",
+        },
+    )
+
+
 def include_router(app: FastAPI):
     iam.router_register_to(app)
 
 
 def add_exception_handler(app: FastAPI):
     app.add_exception_handler(Exception, global_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(ValueErrorException, http_exception_handler_factory(400))
     iam.exception_handler_register_to(app)
 
@@ -36,6 +48,7 @@ def add_exception_handler(app: FastAPI):
 async def lifespan(app: FastAPI):
     init_env()
     instrument_app(app)
+    await iam.start_up()
     try:
         yield
     finally:

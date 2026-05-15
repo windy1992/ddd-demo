@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import TypeVar
 
 from pydantic import BaseModel, Field
-from sqlalchemy import TEXT, BigInteger, Column, DateTime, String, Table
+from sqlalchemy import TEXT, BigInteger, Column, DateTime, Index, String, Table
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 

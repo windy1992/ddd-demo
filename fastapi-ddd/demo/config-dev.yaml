@@ -22,3 +22,22 @@ db:
   max_overflow: 20
   pool_recycle: 3600
   echo: false
+
+messages:
+  role_deleted_message:
+    amqp_url: amqp://admin:admin1@127.0.0.1/
+    queue_name: iam.role_deleted
+    fanout_exchange: iam.role_deleted.fanout
+    event_type: RoleDeleted
+
+  user_deleted_message:
+    amqp_url: amqp://admin:admin1@127.0.0.1/
+    queue_name: iam.user_deleted
+    fanout_exchange: iam.user_deleted.fanout
+    event_type: UserDeleted
+
+tasklets:
+  restart_delay_seconds: 5
+  enabled:
+    - demo.iam.api.tasklet.role_deleted_message_publisher
+    - demo.iam.api.tasklet.user_deleted_message_publisher

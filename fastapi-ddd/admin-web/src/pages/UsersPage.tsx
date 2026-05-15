@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PaginationBar } from "@/components/ui/pagination-bar"
 import {
   Table,
   TableBody,
@@ -24,16 +25,22 @@ import {
 import type { RoleInfo, UserInfo } from "@/lib/iam-types"
 import {
   assignRolesToUser,
+  deleteUser,
   listRoles,
-  listUsers,
+  listUsersPaged,
   registerUser,
   revokeRolesFromUser,
 } from "@/lib/iam-api"
+
+const DEFAULT_PAGE_SIZE = 10
 
 export function UsersPage() {
   const [users, setUsers] = useState<UserInfo[]>([])
   const [roles, setRoles] = useState<RoleInfo[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [total, setTotal] = useState(0)
 
   const [registerOpen, setRegisterOpen] = useState(false)
   const [regUser, setRegUser] = useState("")
@@ -41,27 +48,37 @@ export function UsersPage() {
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [revokeOpen, setRevokeOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [activeUser, setActiveUser] = useState<UserInfo | null>(null)
   const [pickedRoles, setPickedRoles] = useState<Set<string>>(new Set())
-  /** 打开「分配角色」弹窗时用户已有的角色，用于提交时只传新增 */
   const [assignRoleBaseline, setAssignRoleBaseline] = useState<Set<string>>(new Set())
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (p = page, ps = pageSize) => {
     setLoading(true)
     try {
-      const [u, r] = await Promise.all([listUsers(), listRoles()])
-      setUsers(u)
+      const [paged, r] = await Promise.all([listUsersPaged(p, ps), listRoles()])
+      setUsers(paged.items)
+      setTotal(paged.total)
       setRoles(r)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "加载失败")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, pageSize])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  function handlePageChange(p: number) {
+    setPage(p)
+  }
+
+  function handlePageSizeChange(ps: number) {
+    setPageSize(ps)
+    setPage(1)
+  }
 
   function openAssign(user: UserInfo) {
     setActiveUser(user)
@@ -77,6 +94,27 @@ export function UsersPage() {
     setRevokeOpen(true)
   }
 
+  function openDelete(user: UserInfo) {
+    setActiveUser(user)
+    setDeleteOpen(true)
+  }
+
+  async function submitDelete() {
+    if (!activeUser) return
+    try {
+      await deleteUser(activeUser.user_id)
+      toast.success("用户已删除")
+      setDeleteOpen(false)
+      const newTotal = total - 1
+      const maxPage = Math.max(1, Math.ceil(newTotal / pageSize))
+      const targetPage = page > maxPage ? maxPage : page
+      setPage(targetPage)
+      await load(targetPage, pageSize)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "删除失败")
+    }
+  }
+
   function toggleRole(id: string, checked: boolean) {
     setPickedRoles((prev) => {
       const next = new Set(prev)
@@ -90,11 +128,13 @@ export function UsersPage() {
     try {
       await registerUser(regUser, regPass)
       toast.success("用户已注册")
-      setRegisterOpen(false)
       setRegUser("")
       setRegPass("")
-      await load()
+      setRegisterOpen(false)
+      await load(page, pageSize)
     } catch (e) {
+      setRegUser("")
+      setRegPass("")
       toast.error(e instanceof Error ? e.message : "注册失败")
     }
   }
@@ -107,10 +147,10 @@ export function UsersPage() {
       return
     }
     try {
-      await assignRolesToUser(activeUser.user_name, toAdd)
+      await assignRolesToUser(activeUser.user_id, toAdd)
       toast.success("角色已分配")
       setAssignOpen(false)
-      await load()
+      await load(page, pageSize)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "分配失败")
     }
@@ -127,7 +167,7 @@ export function UsersPage() {
       await revokeRolesFromUser(activeUser.user_id, ids)
       toast.success("已移除角色")
       setRevokeOpen(false)
-      await load()
+      await load(page, pageSize)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "移除失败")
     }
@@ -138,7 +178,7 @@ export function UsersPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold">用户管理</h1>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+          <Button type="button" variant="outline" size="sm" onClick={() => void load(page, pageSize)}>
             刷新
           </Button>
           <Button type="button" size="sm" onClick={() => setRegisterOpen(true)}>
@@ -196,6 +236,9 @@ export function UsersPage() {
                       <Button type="button" variant="outline" size="sm" onClick={() => openRevoke(u)}>
                         移除角色
                       </Button>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => openDelete(u)}>
+                        删除
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -203,6 +246,13 @@ export function UsersPage() {
             )}
           </TableBody>
         </Table>
+        <PaginationBar
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
 
       <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
@@ -254,10 +304,11 @@ export function UsersPage() {
               return (
                 <label
                   key={r.role_id}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border p-2"
+                  className={`flex items-center gap-2 rounded-md border p-2 ${already ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
                 >
                   <Checkbox
                     checked={pickedRoles.has(r.role_id)}
+                    disabled={already}
                     onCheckedChange={(c) => toggleRole(r.role_id, c === true)}
                   />
                   <span className="font-medium">{r.role_name}</span>
@@ -276,6 +327,25 @@ export function UsersPage() {
             </Button>
             <Button type="button" onClick={() => void submitAssign()}>
               确认分配
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除用户</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            确定要删除用户 <span className="font-medium text-foreground">{activeUser?.user_name}</span> 吗？此操作不可撤销。
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void submitDelete()}>
+              确认删除
             </Button>
           </DialogFooter>
         </DialogContent>
